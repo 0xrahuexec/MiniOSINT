@@ -6,8 +6,11 @@
 
 FastAPI · Telethon · vis-network · reportlab · zero tracking, your data stays local
 
-</div>
+<p align="center">
+  <img src="image1.png" alt="Overview of the MiniOSINT Platform">
+</p>
 
+</div>
 ---
 
 ## Executive summary
