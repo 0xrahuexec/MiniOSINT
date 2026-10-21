@@ -65,7 +65,9 @@ modules return data keyless; optional keys only add depth).
 ## Quickstart
 
 ```bash
-git clone https://github.com/<you>/mini-osint.git && cd mini-osint
+git clone https://github.com/0xrahuexec/MiniOSINT.git 
+pip install -r requirements.txt
+cd mini-osint && chmod +x run.sh
 ./run.sh            # creates venv, installs deps → http://127.0.0.1:8000
 ```
 
