@@ -1,0 +1,13 @@
+# secrets & session files — NEVER commit these
+.env
+osint_session.session
+osint_session.session-journal
+
+# runtime artifacts
+osint.db
+reports/*.pdf
+!reports/sample_report.pdf
+__pycache__/
+*.pyc
+.venv/
+.pytest_cache/

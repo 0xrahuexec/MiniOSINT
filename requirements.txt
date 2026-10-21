@@ -1,0 +1,8 @@
+fastapi>=0.110
+uvicorn[standard]>=0.29
+requests>=2.31
+python-dotenv>=1.0
+reportlab>=4.0
+# optional, only for the Telegram module:
+telethon>=1.34
+dnspython>=2.6

@@ -1,0 +1,555 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>MiniOSINT Platform</title>
+<script src="https://unpkg.com/vis-network/standalone/umd/vis-network.min.js"></script>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800&family=JetBrains+Mono:wght@400;600&display=swap" rel="stylesheet">
+<style>
+:root{
+  --bg:#070b14; --panel:rgba(17,23,41,.72); --panel2:rgba(22,30,52,.6);
+  --border:rgba(148,163,255,.14); --border2:rgba(148,163,255,.26);
+  --fg:#e7ecff; --mut:#8ea0c9; --mut2:#5c6b94;
+  --cy:#22d3ee; --vi:#a78bfa; --pk:#f472b6; --ok:#34d399; --bad:#fb7185; --warn:#fbbf24;
+  --grad:linear-gradient(90deg,var(--cy),var(--vi) 55%,var(--pk));
+}
+*{box-sizing:border-box;margin:0}
+html,body{height:100%}
+body{
+  background:
+    radial-gradient(900px 500px at 85% -10%, rgba(167,139,250,.16), transparent 60%),
+    radial-gradient(800px 500px at -10% 20%, rgba(34,211,238,.12), transparent 60%),
+    radial-gradient(700px 600px at 55% 115%, rgba(244,114,182,.10), transparent 60%),
+    var(--bg);
+  color:var(--fg); font:14px/1.55 Inter,system-ui,sans-serif; min-height:100vh;
+}
+body::before{content:"";position:fixed;inset:0;pointer-events:none;opacity:.5;
+  background-image:linear-gradient(rgba(148,163,255,.05) 1px,transparent 1px),
+                   linear-gradient(90deg,rgba(148,163,255,.05) 1px,transparent 1px);
+  background-size:44px 44px;
+  mask-image:radial-gradient(ellipse at 50% 0%, black 30%, transparent 75%);}
+::selection{background:rgba(167,139,250,.35)}
+::-webkit-scrollbar{width:9px;height:9px}
+::-webkit-scrollbar-thumb{background:#273154;border-radius:8px}
+::-webkit-scrollbar-track{background:transparent}
+
+header{
+  position:sticky;top:0;z-index:20;display:flex;align-items:center;gap:12px;
+  padding:14px 26px;background:rgba(7,11,20,.7);backdrop-filter:blur(14px);
+  border-bottom:1px solid var(--border);
+}
+.logo{font-size:19px;font-weight:800;letter-spacing:-.02em;display:flex;align-items:center;gap:10px}
+.logo .mark{width:30px;height:30px;border-radius:9px;background:var(--grad);display:grid;place-items:center;font-size:15px;box-shadow:0 4px 18px rgba(139,92,246,.5)}
+.logo em{font-style:normal;background:var(--grad);-webkit-background-clip:text;background-clip:text;color:transparent}
+.pill{font-size:11px;font-weight:600;padding:3px 10px;border-radius:20px;border:1px solid var(--border);color:var(--mut2);background:var(--panel2)}
+.pill.on{color:var(--ok);border-color:rgba(52,211,153,.4);box-shadow:0 0 12px rgba(52,211,153,.15) inset}
+.spacer{flex:1}
+.btn{background:var(--grad);border:none;color:#0b1020;font-weight:700;padding:8px 16px;border-radius:10px;cursor:pointer;font-size:12.5px;font-family:inherit;transition:.18s;box-shadow:0 4px 16px rgba(139,92,246,.35)}
+.btn:hover{transform:translateY(-1px);box-shadow:0 8px 22px rgba(139,92,246,.5)}
+.btn2{background:var(--panel2);border:1px solid var(--border);color:var(--fg);padding:7px 13px;border-radius:10px;cursor:pointer;font-size:12px;font-family:inherit;transition:.15s}
+.btn2:hover{border-color:var(--border2);background:rgba(34,44,78,.7)}
+
+main{display:grid;grid-template-columns:minmax(0,1fr) 300px;gap:18px;padding:20px 26px;max-width:1360px;margin:0 auto}
+@media(max-width:980px){main{grid-template-columns:1fr}}
+
+.tabs{display:flex;gap:7px;margin-bottom:16px;flex-wrap:wrap}
+.tabs button{background:var(--panel2);border:1px solid var(--border);color:var(--mut);padding:8px 16px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13px;font-weight:600;transition:.18s;backdrop-filter:blur(8px)}
+.tabs button:hover{color:var(--fg);transform:translateY(-1px)}
+.tabs button.active{color:#fff;border-color:transparent;background:linear-gradient(var(--panel),var(--panel)) padding-box,var(--grad) border-box;border:1px solid transparent;box-shadow:0 4px 18px rgba(139,92,246,.28)}
+
+.card{background:var(--panel);border:1px solid var(--border);border-radius:16px;padding:18px;margin-bottom:16px;backdrop-filter:blur(12px);box-shadow:0 8px 30px rgba(2,6,20,.45)}
+.card h3{font-size:13px;font-weight:700;text-transform:uppercase;letter-spacing:.09em;color:var(--mut);margin:14px 0 8px;display:flex;align-items:center;gap:8px}
+.card h3::before{content:"";width:14px;height:2px;border-radius:2px;background:var(--grad)}
+
+input{background:rgba(7,11,20,.7);border:1px solid var(--border);color:var(--fg);padding:10px 14px;border-radius:11px;width:300px;font-family:"JetBrains Mono",monospace;font-size:13px;transition:.18s;outline:none}
+input:focus{border-color:var(--vi);box-shadow:0 0 0 3px rgba(167,139,250,.18)}
+.row{display:flex;gap:9px;flex-wrap:wrap;align-items:center}
+
+.go{background:var(--grad);border:none;color:#0b1020;font-weight:800;padding:10px 20px;border-radius:11px;cursor:pointer;font-family:inherit;font-size:13px;transition:.18s;box-shadow:0 4px 18px rgba(139,92,246,.35)}
+.go:hover{transform:translateY(-1px);filter:brightness(1.1)}
+.go:disabled{opacity:.55;cursor:wait;transform:none}
+
+.hint{color:var(--mut2);font-size:12px;margin-top:10px}
+.muted{color:var(--mut);font-size:12px}
+.err{color:var(--bad);background:rgba(251,113,133,.08);border:1px solid rgba(251,113,133,.3);padding:10px 14px;border-radius:11px;font-size:13px}
+
+table{width:100%;border-collapse:collapse;font-size:13px}
+th,td{padding:8px 11px;text-align:left;vertical-align:top;border-bottom:1px solid rgba(148,163,255,.08)}
+th{color:var(--mut);font-weight:600;font-size:11px;text-transform:uppercase;letter-spacing:.06em}
+tbody tr{transition:background .12s}
+tbody tr:hover{background:rgba(148,163,255,.05)}
+.tblwrap{border:1px solid var(--border);border-radius:12px;overflow:hidden;overflow-x:auto}
+
+.found{color:var(--ok);font-weight:600}
+.not_found{color:var(--mut2)}
+.unknown{color:var(--warn)}
+a{color:var(--cy)}
+.badge{display:inline-block;font-size:10.5px;font-weight:700;padding:2px 9px;border-radius:20px;letter-spacing:.04em}
+.badge.ok{background:rgba(52,211,153,.13);color:var(--ok)}
+.badge.warn{background:rgba(251,191,36,.12);color:var(--warn)}
+.badge.bad{background:rgba(251,113,133,.12);color:var(--bad)}
+
+.kv{display:grid;grid-template-columns:150px 1fr;gap:5px 14px;font-size:13px}
+.kv b{color:var(--mut);font-weight:600}
+.statgrid{display:grid;grid-template-columns:repeat(auto-fit,minmax(130px,1fr));gap:10px;margin-top:6px}
+.stat{background:var(--panel2);border:1px solid var(--border);border-radius:12px;padding:10px 13px}
+.stat .v{font-size:19px;font-weight:800;font-family:"JetBrains Mono",monospace}
+.stat .k{font-size:10.5px;color:var(--mut);text-transform:uppercase;letter-spacing:.07em;margin-top:2px}
+img.avatar{width:84px;height:84px;border-radius:14px;border:1px solid var(--border2);box-shadow:0 6px 20px rgba(2,6,20,.5);object-fit:cover}
+
+#graph{height:600px;border-radius:14px;background:radial-gradient(600px 400px at 50% 40%, rgba(99,102,241,.07), transparent 70%), rgba(7,11,20,.45);border:1px solid var(--border)}
+.vis-tooltip{position:absolute;background:rgba(13,19,36,.95)!important;border:1px solid var(--border2)!important;border-radius:10px!important;color:var(--fg)!important;font-family:Inter,sans-serif!important;font-size:12px!important;padding:7px 11px!important;box-shadow:0 10px 30px rgba(2,6,20,.6)!important;backdrop-filter:blur(8px)}
+.legend{display:flex;gap:7px;flex-wrap:wrap;margin-top:12px}
+.legend span{display:inline-flex;align-items:center;gap:6px;font-size:11.5px;color:var(--mut);background:var(--panel2);border:1px solid var(--border);padding:4px 11px;border-radius:20px}
+.legend i{width:8px;height:8px;border-radius:50%;display:inline-block;box-shadow:0 0 8px currentColor}
+
+.hist-item{padding:9px 12px;border:1px solid var(--border);border-radius:11px;margin-bottom:8px;cursor:pointer;font-size:12px;background:var(--panel2);transition:.15s}
+.hist-item:hover{border-color:var(--vi);transform:translateX(2px)}
+.hist-item .q{font-family:"JetBrains Mono",monospace;font-size:12px}
+.hist-item .t{color:var(--mut2);font-size:10.5px}
+.hist-type{font-size:9.5px;font-weight:800;letter-spacing:.08em;text-transform:uppercase;color:var(--vi)}
+
+@keyframes fadeUp{from{opacity:0;transform:translateY(10px)}to{opacity:1;transform:none}}
+.fade{animation:fadeUp .4s cubic-bezier(.2,.7,.3,1) both}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.35}}
+.loading{animation:pulse 1.1s ease-in-out infinite;color:var(--mut)}
+#toast{position:fixed;bottom:22px;left:50%;transform:translate(-50%,80px);background:rgba(13,19,36,.95);border:1px solid var(--border2);padding:11px 20px;border-radius:12px;font-size:13px;z-index:50;transition:.3s;opacity:0;backdrop-filter:blur(10px);box-shadow:0 12px 34px rgba(2,6,20,.6)}
+#toast.show{transform:translate(-50%,0);opacity:1}
+</style>
+</head>
+<body>
+<header>
+  <div class="logo"><span class="mark">🕵️</span>Mini<em>OSINT</em></div>
+  <span class="pill" id="k-shodan">shodan</span>
+  <span class="pill" id="k-abuseipdb">abuseipdb</span>
+  <span class="pill" id="k-hibp">hibp</span>
+      <span class="pill" id="k-censys">censys</span>
+      <span class="pill" id="k-dnsdumpster">dnsdumpster</span>
+  <div class="spacer"></div>
+  <button class="btn2" style="margin-right:8px" onclick="testConns(this)">🔌 Test connections</button>
+      <button class="btn" onclick="window.open('/api/report/all','_blank')">⬇ Export PDF report</button>
+</header>
+<main>
+  <section>
+    <div class="tabs">
+      <button class="active" data-tab="ip">🌐 IP OSINT</button>
+      <button data-tab="username">👤 Username</button>
+      <button data-tab="email">✉️ Email</button>
+      <button data-tab="telegram">✈️ Telegram</button>
+      <button data-tab="graph">🔗 Link Graph</button>
+    </div>
+
+    <div id="pane-ip" class="pane">
+      <div class="card"><div class="row">
+        <input id="in-ip" placeholder="8.8.8.8 or example.com" spellcheck="false">
+        <button class="go" data-label="Investigate" onclick="run('ip')">Investigate</button>
+        </div><div id="out-ip"></div>
+      </div>
+    </div>
+    <div id="pane-username" class="pane" style="display:none">
+      <div class="card"><div class="row">
+        <input id="in-username" placeholder="johndoe" spellcheck="false">
+        <button class="go" data-label="Search 48 platforms" onclick="run('username')">Search 48 platforms</button>
+        </div><div id="out-username"></div>
+      </div>
+    </div>
+    <div id="pane-email" class="pane" style="display:none">
+      <div class="card"><div class="row">
+        <input id="in-email" placeholder="someone@example.com" spellcheck="false">
+        <button class="go" data-label="Investigate" onclick="run('email')">Investigate</button>
+        </div>
+        <div class="hint">Gravatar pivot · linked accounts · breach exposure · derived usernames</div>
+        <div id="out-email"></div>
+      </div>
+    </div>
+    <div id="pane-telegram" class="pane" style="display:none">
+      <div class="card"><div class="row">
+        <input id="in-telegram" placeholder="public channel, e.g. durov" spellcheck="false">
+        <button class="go" data-label="Analyze channel" onclick="run('telegram')">Analyze channel</button>
+        </div>
+        <div class="hint">Set TELEGRAM_API_ID / TELEGRAM_API_HASH in .env (my.telegram.org), then run <b>python telegram_login.py</b> once (interactive) · public channels only</div>
+        <div id="out-telegram"></div>
+      </div>
+    </div>
+    <div id="pane-graph" class="pane" style="display:none">
+      <div class="card"><div class="row">
+        <button class="btn2" onclick="loadGraph()">⟳ Refresh graph</button>
+        <button class="btn2" id="physBtn" onclick="togglePhysics()">⏸ Freeze physics</button>
+        <span class="muted">Auto-built from your searches — click nodes to trace pivots.</span>
+      </div>
+      <div id="graph"></div>
+      <div class="legend" id="legend"></div>
+      </div>
+    </div>
+  </section>
+
+  <aside>
+    <div class="card">
+      <div class="row" style="justify-content:space-between;margin-bottom:10px">
+        <b style="font-size:13px">Search history</b>
+        <span class="row">
+          <button class="btn2" id="delSelBtn" style="display:none;color:var(--bad);border-color:rgba(251,113,133,.4)" onclick="deleteSelected()">🗑 <span id="delCount">0</span></button>
+          <button class="btn2" onclick="clearHist()">clear all</button>
+        </span>
+      </div>
+      <label class="muted" style="display:block;margin-bottom:8px;font-size:11px"><input type="checkbox" id="selAll" style="width:auto;margin-right:6px" onchange="toggleSelectAll(this)"> select all</label>
+      <div id="history"><div class="muted">No searches yet.</div></div>
+    </div>
+  </aside>
+</main>
+
+<div id="testpanel" style="display:none;position:fixed;top:64px;right:26px;width:420px;max-width:92vw;z-index:40" class="card fade">
+      <div class="row" style="justify-content:space-between;margin-bottom:8px"><b>Connection tests</b>
+        <button class="btn2" onclick="document.getElementById('testpanel').style.display='none'">✕</button></div>
+      <div id="testbody"><p class="loading">◌ testing…</p></div>
+    </div>
+    <div id="toast"></div>
+<script>
+const $ = id => document.getElementById(id);
+let net = null, physicsOn = true;
+const esc = v => String(v).replace(/[&<>"]/g, c => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const TYPE_COLORS = {ip:'#fb7185',username:'#22d3ee',email:'#a78bfa',account:'#34d399',
+  username_guess:'#38bdf8',breach:'#fbbf24',org:'#94a3b8',asn:'#94a3b8',name:'#c4b5fd',
+  netblock:'#64748b',flag:'#fb7185',domain:'#2dd4bf',subdomain:'#60a5fa',hostname:'#fb923c'};
+
+document.querySelectorAll('.tabs button').forEach(b => b.onclick = () => {
+  document.querySelectorAll('.tabs button').forEach(x => x.classList.remove('active'));
+  b.classList.add('active');
+  document.querySelectorAll('.pane').forEach(p => { p.style.display='none'; p.classList.remove('fade'); });
+  const pane = $('pane-' + b.dataset.tab);
+  pane.style.display = 'block'; void pane.offsetWidth; pane.classList.add('fade');
+  if (b.dataset.tab === 'graph') loadGraph();
+});
+document.querySelectorAll('input').forEach(i => i.addEventListener('keydown', e => {
+  if (e.key === 'Enter') run(i.id.replace('in-',''));
+}));
+
+function toast(msg) {
+  const t = $('toast'); t.textContent = msg; t.classList.add('show');
+  clearTimeout(t._h); t._h = setTimeout(() => t.classList.remove('show'), 3200);
+}
+
+async function run(type) {
+  const q = $('in-' + type).value.trim();
+  if (!q) return toast('Enter a value first');
+  const btn = document.querySelector('#pane-' + type + ' .go');
+  btn.disabled = true; btn.textContent = 'working…';
+  $('out-' + type).innerHTML = '<p class="loading" style="margin-top:14px">◌ gathering intelligence…</p>';
+  try {
+    const r = await fetch('/api/lookup/' + type, {method:'POST',
+      headers:{'Content-Type':'application/json'}, body:JSON.stringify({query:q})});
+    if (!r.ok) { const e = await r.json(); throw new Error(e.detail || r.statusText); }
+    const d = await r.json();
+    render(type, d);
+    loadHistory();
+    toast('✓ ' + type + ' lookup complete');
+  } catch (e) {
+    $('out-' + type).innerHTML = '<div class="err" style="margin-top:14px">⚠ ' + esc(e.message) + '</div>';
+  } finally { btn.disabled = false; btn.textContent = btn.dataset.label; }
+}
+
+const kv = obj => '<div class="kv">' + Object.entries(obj)
+  .filter(([,v]) => v !== null && v !== '' && v !== undefined)
+  .map(([k,v]) => `<b>${k}</b><span>${esc(v)}</span>`).join('') + '</div>';
+
+function statCard(v, k, color) {
+  return `<div class="stat"><div class="v" style="color:${color||'var(--fg)'}">${esc(v)}</div><div class="k">${k}</div></div>`;
+}
+
+function render(type, d) {
+  const out = $('out-' + type), r = d.result;
+  if (r.error) { out.innerHTML = '<div class="err" style="margin-top:14px">⚠ ' + esc(r.error) + '</div>'; return; }
+  let html = '<div class="fade" style="margin-top:16px">';
+
+  if (type === 'ip') {
+    const g = r.sources?.['ip-api'] || {}, ab = r.sources?.abuseipdb || {},
+          sh = r.sources?.shodan || {}, rd = r.sources?.rdap || {};
+    html += '<div class="statgrid">' +
+      statCard(g.country || '?', 'country', 'var(--cy)') +
+      statCard(g.city || '?', 'city') +
+      statCard(g.asname || (g.as || '?'), 'ASN') +
+      statCard(ab.abuseConfidenceScore !== undefined ? ab.abuseConfidenceScore + '%' : '—', 'abuse score',
+               ab.abuseConfidenceScore > 25 ? 'var(--bad)' : 'var(--ok)') +
+      '</div>';
+    html += '<h3>Network detail</h3>' + kv({
+      'ISP / Org': `${g.isp || '?'} / ${g.org || '?'}`, 'ASN': g.as,
+      'Timezone': g.timezone, 'Reverse DNS': g.reverse,
+      'Netblock (RDAP)': rd.name,
+      'VPN / Proxy / hosting': g.proxy ? '⚠️ likely proxy/hosting' : 'no indicator',
+      'Lat / Lon': (g.lat !== undefined) ? `${g.lat}, ${g.lon}` : null,
+    });
+    if (ab.totalReports !== undefined)
+      html += `<h3>Reputation</h3><p><span class="badge ${ab.abuseConfidenceScore>25?'bad':'ok'}">AbuseIPDB ${ab.abuseConfidenceScore}%</span> <span class="muted">${ab.totalReports} reports in 90d · last: ${esc(ab.lastReportedAt||'n/a')} · ${esc(ab.usageType||'')}</span></p>`;
+    if (sh.ports?.length)
+      html += `<h3>Exposed services (Shodan)</h3><div class="row">${sh.ports.slice(0,20).map(p=>`<span class="badge" style="background:rgba(34,211,238,.12);color:var(--cy)">:${p}</span>`).join('')}</div>`;
+
+    // --- Shodan InternetDB (free, keyless) ---
+    const idb = r.sources?.internetdb;
+    if (idb && !idb.error && !idb.not_found && (idb.ports?.length || idb.hostnames?.length || idb.vulns?.length)) {
+      html += '<h3>Shodan InternetDB <span class="muted" style="text-transform:none;letter-spacing:0">(free, no key)</span></h3>';
+      if (idb.ports?.length)
+        html += '<div class="row">' + idb.ports.map(p => `<span class="badge" style="background:rgba(167,139,250,.14);color:var(--vi)">:${esc(p)}</span>`).join('') + '</div>';
+      if (idb.vulns?.length)
+        html += `<p style="margin-top:6px"><span class="badge bad">${idb.vulns.length} CVEs</span> <span class="muted">${idb.vulns.slice(0,8).map(esc).join(', ')}</span></p>`;
+      if (idb.tags?.length)
+        html += `<p style="margin-top:4px"><span class="badge warn">tags</span> <span class="muted">${idb.tags.map(esc).join(', ')}</span></p>`;
+      if (idb.hostnames?.length)
+        html += `<p style="margin-top:4px"><span class="badge ok">hostnames</span> <span class="muted">${idb.hostnames.slice(0,8).map(esc).join(', ')}</span></p>`;
+    }
+
+    // --- Censys (host / cert intel) ---
+    const cs = r.sources?.censys;
+    if (cs && !cs.skipped && !cs.error && !cs.not_found) {
+      html += '<h3>Censys</h3>';
+      if (cs.host?.services?.length) {
+        html += '<div class="statgrid">' +
+          statCard(cs.host.country || '?', 'country (censys)', 'var(--cy)') +
+          statCard(cs.host.services.length, 'services seen', 'var(--vi)') +
+          statCard(cs.host.os || '?', 'OS guess') + '</div>';
+        html += '<div class="tblwrap" style="margin-top:10px"><table><thead><tr><th>Port</th><th>Service</th><th>TLS certificate subject</th></tr></thead><tbody>' +
+          cs.host.services.map(s => `<tr><td>:${esc(s.port)}<span class="muted">/${esc(s.transport||'')}</span></td><td>${esc(s.service_name||'?')}</td><td class="muted">${esc(s.cert_subject||'')}</td></tr>`).join('') +
+          '</tbody></table></div>';
+        if (cs.host.last_updated) html += `<p class="muted" style="margin-top:6px">last scanned: ${esc(cs.host.last_updated)}${cs.host.asn ? ' · ' + esc(cs.host.asn) + ' ' + esc(cs.host.asn_name||'') : ''}</p>`;
+        if (cs.host.hostnames?.length) html += `<p class="muted" style="margin-top:4px">reverse DNS: ${cs.host.hostnames.slice(0,10).map(h=>esc(h)).join(', ')}${cs.host.hostnames.length>10?'…':''}</p>`;
+      }
+      if (cs.hosts?.length) {
+        html += '<div class="statgrid">' + statCard(cs.hosts.length, 'hosts found', 'var(--vi)') + '</div>';
+        html += '<div class="tblwrap" style="margin-top:10px"><table><thead><tr><th>Host</th><th>Country</th><th>Services</th></tr></thead><tbody>' +
+          cs.hosts.map(h => `<tr><td><b>${esc(h.ip)}</b></td><td>${esc(h.country||'')}</td><td class="muted">${esc(h.services||'')}</td></tr>`).join('') +
+          '</tbody></table></div>';
+      }
+      if (cs.certificates?.length) {
+        html += `<h3>Certificates (${cs.certificates.length})</h3><div class="tblwrap"><table><thead><tr><th>Subject</th><th>Issuer</th><th>SAN names</th></tr></thead><tbody>` +
+          cs.certificates.map(c => `<tr><td>${esc(c.subject_dn||'')}</td><td class="muted">${esc(c.issuer||'')}</td><td class="muted">${esc(c.names||'')}</td></tr>`).join('') +
+          '</tbody></table></div>';
+      }
+    } else if (cs?.not_found) {
+      html += '<p class="muted" style="margin-top:10px">Censys: no scan data for this host yet.</p>';
+    } else if (cs?.skipped) {
+      html += `<p class="muted" style="margin-top:10px">🔒 Censys: ${esc(cs.skipped)}</p>`;
+    } else if (cs?.error) {
+      html += `<p class="muted" style="margin-top:10px">Censys error: ${esc(cs.error)}</p>`;
+    }
+
+    // --- subdomains (official DNSDumpster API + CT/DNS fallbacks) ---
+    if (r.dns_warnings?.length)
+      html += `<p class="muted" style="margin-top:10px">⚠ ${r.dns_warnings.map(esc).join(' · ')}</p>`;
+    if (r.dns_records && (r.dns_records.ns?.length || r.dns_records.mx?.length || r.dns_records.txt?.length)) {
+      const dr = r.dns_records;
+      html += '<h3>DNS records</h3>' +
+        (dr.ns?.length ? `<p><span class="badge" style="background:rgba(167,139,250,.13);color:var(--vi)">NS</span> <span class="muted">${dr.ns.map(esc).join(', ')}</span></p>` : '') +
+        (dr.mx?.length ? `<p style="margin-top:4px"><span class="badge" style="background:rgba(34,211,238,.13);color:var(--cy)">MX</span> <span class="muted">${dr.mx.map(esc).join(', ')}</span></p>` : '') +
+        (dr.txt?.length ? `<p style="margin-top:4px"><span class="badge" style="background:rgba(251,191,36,.13);color:var(--warn)">TXT</span> <span class="muted">${dr.txt.map(esc).join(' · ')}</span></p>` : '');
+    }
+    if (r.subdomains?.length) {
+      const resolved = r.subdomains.filter(s => s.ips.length).length;
+      html += '<div class="statgrid" style="margin-top:10px">' +
+        statCard(r.subdomains.length, 'subdomains found', 'var(--cy)') +
+        statCard(resolved, 'live (resolve)', 'var(--ok)') +
+        statCard(r.dns_sources || '—', 'data sources', 'var(--vi)') + '</div>';
+      const srcBadge = s => s.source === 'dnsdumpster'
+        ? '<span class="badge" style="background:rgba(167,139,250,.15);color:var(--vi)">DNSDumpster API</span>'
+        : '<span class="badge">CT+DNS</span>';
+      html += `<h3>Subdomains${r.domain ? ' — ' + esc(r.domain) : ''}</h3>` +
+        `<div class="tblwrap"><table><thead><tr><th>Host</th><th>IP address(es)</th><th>Source</th></tr></thead><tbody>` +
+        r.subdomains.map(s => `<tr><td>${esc(s.host)}</td><td>${s.ips.length ? s.ips.map(ip=>`<span class="badge" style="background:rgba(52,211,153,.12);color:var(--ok)">${esc(ip)}</span>`).join(' ') : '<span class="muted">unresolved</span>'}</td><td>${srcBadge(s)}</td></tr>`).join('') +
+        '</tbody></table></div>';
+    } else if (!r.dns_warnings?.length) {
+      html += '<p class="muted" style="margin-top:10px">No subdomains found and no source responded — crt.sh may be down and no DNSDUMPSTER_API_KEY is configured.</p>';
+    }
+  }
+
+  if (type === 'username') {
+    html += `<div class="statgrid">` +
+      statCard(r.found_count, 'matches', 'var(--ok)') +
+      statCard(r.checked, 'platforms scanned') +
+      statCard(Math.round(r.found_count / r.checked * 100) + '%', 'hit rate', 'var(--vi)') + '</div>';
+    html += `<h3>Results</h3><div class="tblwrap"><table><thead><tr><th>Platform</th><th>Status</th><th>Profile</th></tr></thead><tbody>`;
+    html += r.results.map(x => `<tr><td>${x.site}</td><td class="${x.status}">${x.status.replace('_',' ')}</td><td>${x.status==='found'?`<a href="${x.url}" target="_blank">${x.url}</a>`:'<span class="muted">—</span>'}</td></tr>`).join('');
+    html += '</tbody></table></div>';
+  }
+
+  if (type === 'email') {
+    const g = r.gravatar || {};
+    // source status chips — so 'no data' is never ambiguous
+    const chips = [];
+    chips.push(r.gravatar_status === 'profile found'
+      ? '<span class="badge ok">Gravatar ✓</span>'
+      : `<span class="badge" style="background:rgba(148,163,255,.1);color:var(--mut)">Gravatar: ${esc(r.gravatar_status||'unchecked')}</span>`);
+    if (r.breach_sources_queried?.length)
+      chips.push(`<span class="badge ${r.breaches?.length ? 'bad' : 'ok'}">breaches: ${r.breaches?.length||0} via ${r.breach_sources_queried.join(' + ')}</span>`);
+    else
+      chips.push('<span class="badge warn">breach API key not set</span>');
+    chips.push(`<span class="badge" style="background:rgba(148,163,255,.1);color:var(--mut)">MX: ${esc(r.mx?.[0] || r.mx_status || 'n/a')}</span>`);
+    if (r.disposable) chips.push('<span class="badge bad">⚠ disposable email domain</span>');
+    html += '<div class="row" style="margin-bottom:10px">' + chips.join(' ') + '</div>';
+    if (r.breach_note) html += `<p class="muted" style="margin-bottom:8px">${esc(r.breach_note)}</p>`;
+    (r.breach_errors||[]).forEach(e => html += `<p class="muted">⚠ ${esc(e)}</p>`);
+    html += '<div style="display:flex;gap:18px;flex-wrap:wrap">';
+    if (g.photo || r.gravatar_avatar)
+      html += `<img class="avatar" src="${g.photo || r.gravatar_avatar}" onerror="this.style.display='none'">`;
+    html += '<div style="flex:1;min-width:260px">' +
+      (g.display_name ? `<div style="font-size:17px;font-weight:800">${esc(g.display_name)}</div>` : '') +
+      kv({'Location': g.location, 'About': g.about, 'MX records': (r.mx||[]).join(', '),
+          'Gravatar': r.gravatar_hash ? 'hash ' + r.gravatar_hash : null}) + '</div></div>';
+    if (g.accounts?.length)
+      html += `<h3>Verified linked accounts (Gravatar)</h3><div class="tblwrap"><table><thead><tr><th>Service</th><th>Username</th><th>URL</th></tr></thead><tbody>` +
+        g.accounts.map(a => `<tr><td><b>${esc(a.name||a.domain||'?')}</b></td><td>${esc(a.username||'')}</td><td>${a.url?`<a href="${a.url}" target="_blank">link</a>`:''}</td></tr>`).join('') + '</tbody></table></div>';
+    if (r.breaches?.length) {
+      html += `<h3>⚠️ Breach exposure — ${r.breaches.length} source${r.breaches.length!==1?'s':''}${r.leakcheck_found_count ? ` · ${Number(r.leakcheck_found_count).toLocaleString()} leaked records` : ''}</h3>`;
+      if (r.leakcheck_pro_note) html += `<p class="muted" style="margin-bottom:6px">${esc(r.leakcheck_pro_note)}</p>`;
+      html += `<div class="tblwrap"><table><thead><tr><th>Breach</th><th>Date</th><th>Data exposed</th></tr></thead><tbody>` +
+        r.breaches.map(b => `<tr><td><b>${esc(b.name)}</b> ${b.via ? `<span class="badge" style="background:rgba(167,139,250,.15);color:var(--vi);font-size:9px">${esc(b.via)}</span>` : ''}</td><td>${esc(b.date||'')}</td><td>${esc((b.data||[]).join(', '))}</td></tr>`).join('') + '</tbody></table></div>';
+    }
+    else if (!r.breach_note)
+      html += `<h3>Breach exposure</h3><p><span class="badge ok">0 breaches found</span></p>`;
+    html += `<p class="muted" style="margin-bottom:6px">No Gravatar profile or breach key? The strongest email pivot is checking which platforms use the same username — click one:</p>`;
+    html += `<h3>Pivot → derived usernames</h3><div class="row">` + (r.possible_usernames||[])
+      .map(u => `<button class="btn2" onclick="$('in-username').value='${esc(u)}';document.querySelector('[data-tab=username]').click();run('username')">🔎 ${esc(u)}</button>`).join('') + '</div>';
+  }
+
+  if (type === 'telegram') {
+    html += `<div style="font-size:17px;font-weight:800;margin-bottom:8px">${esc(r.title || d.query)} ${r.official_site?`<a href="https://${esc(r.official_site)}" target="_blank" style="font-size:12px;font-weight:500">↗ ${esc(r.official_site)}</a>`:''}</div>`;
+    html += '<div class="statgrid">' +
+      statCard(r.participants?.toLocaleString() || '?', 'members', 'var(--cy)') +
+      statCard(r.avg_views?.toLocaleString() || '?', 'avg views', 'var(--vi)') +
+      statCard(r.forwarded_ratio !== undefined ? Math.round(r.forwarded_ratio*100)+'%' : '?', 'forwarded', 'var(--pk)') +
+      statCard(r.sampled_messages || '?', 'msgs sampled') + '</div>';
+    html += '<h3>Details</h3>' + kv({
+      'Description': r.description, 'Last activity': r.last_activity,
+      'Window start': r.first_sampled,
+    });
+    if (r.recent_message_preview) html += `<p class="muted" style="margin-top:8px">Latest message: “${esc(r.recent_message_preview)}”</p>`;
+  }
+  out.innerHTML = html + '</div>';
+}
+
+const selectedIds = new Set();
+function updateSel(cb) {
+  const id = +cb.dataset.id;
+  cb.checked ? selectedIds.add(id) : selectedIds.delete(id);
+  document.getElementById('delSelBtn').style.display = selectedIds.size ? '' : 'none';
+  document.getElementById('delCount').textContent = selectedIds.size;
+  const all = document.querySelectorAll('.hist-sel');
+  document.getElementById('selAll').checked = all.length > 0 && [...all].every(c => c.checked);
+}
+function toggleSelectAll(master) {
+  document.querySelectorAll('.hist-sel').forEach(c => { if (c.checked !== master.checked) { c.checked = master.checked; updateSel(c); } });
+  if (!master.checked) { selectedIds.clear(); document.getElementById('delSelBtn').style.display='none'; document.getElementById('delCount').textContent='0'; }
+}
+async function deleteSelected() {
+  if (!selectedIds.size) return;
+  const r = await fetch('/api/history/delete', {method: 'POST',
+    headers: {'Content-Type':'application/json'}, body: JSON.stringify({ids: [...selectedIds]})});
+  const n = (await r.json()).deleted;
+  selectedIds.clear();
+  document.getElementById('delSelBtn').style.display = 'none';
+  document.getElementById('selAll').checked = false;
+  loadHistory();
+  toast('🗑 deleted ' + n + ' item(s)');
+}
+
+async function loadHistory() {
+  const d = await (await fetch('/api/history')).json();
+  const h = $('history');
+  if (!d.items.length) { h.innerHTML = '<div class="muted">No searches yet.</div>'; return; }
+  const looksIp = q => /^(\d{1,3}\.){3}\d{1,3}$/.test(q) || /^[0-9a-f]{0,4}:/i.test(q);
+  const typeLabel = i => i.type === 'ip' ? (looksIp(i.query) ? 'IP' : 'Hostname') : i.type;
+  h.innerHTML = d.items.map(i =>
+    `<div class="hist-item" onclick="openResult(${i.id})" id="hist-${i.id}">
+       <label onclick="event.stopPropagation()" style="float:right;cursor:pointer">
+         <input type="checkbox" class="hist-sel" data-id="${i.id}" style="width:auto;accent-color:var(--bad)" ${selectedIds.has(i.id) ? 'checked' : ''} onchange="updateSel(this)">
+       </label>
+       <span class="hist-type">${typeLabel(i)}</span><div class="q">${esc(i.query)}</div><div class="t">${i.created_at}</div></div>`).join('');
+}
+async function openResult(id) {
+  const d = await (await fetch('/api/result/' + id)).json();
+  document.querySelector(`[data-tab=${d.type}]`).click();
+  $('in-' + d.type).value = d.query;
+  render(d.type, d);
+}
+async function clearHist() { await fetch('/api/history', {method:'DELETE'}); loadHistory(); toast('History cleared'); }
+
+function togglePhysics() {
+  physicsOn = !physicsOn;
+  if (net) net.setOptions({physics: {enabled: physicsOn}});
+  $('physBtn').textContent = physicsOn ? '⏸ Freeze physics' : '▶ Resume physics';
+}
+
+async function loadGraph() {
+  const box = $('graph');
+  box.innerHTML = '<p class="loading" style="padding:24px">◌ mapping the graph…</p>';
+  const d = await (await fetch('/api/graph')).json();
+  const types = [...new Set(d.nodes.map(n => n.type))];
+  $('legend').innerHTML = types.map(t =>
+    `<span><i style="background:${TYPE_COLORS[t]||'#58a6ff'};color:${TYPE_COLORS[t]||'#58a6ff'}"></i>${t}</span>`).join('') +
+    `<span><i style="background:#e7ecff;color:#e7ecff"></i>${d.stats.nodes} nodes · ${d.stats.edges} links</span>`;
+  if (!d.nodes.length) {
+    box.innerHTML = '<p class="muted" style="padding:24px">Run some searches first — the graph builds itself from your results.</p>';
+    return;
+  }
+  const nodes = new vis.DataSet(d.nodes.map(n => ({
+    id: n.id, label: n.label, value: n.value,
+    color: { background: TYPE_COLORS[n.type] || '#58a6ff', border: 'rgba(255,255,255,.35)' },
+    title: (() => { const el = document.createElement('div');
+      el.innerHTML = `<b>${esc(n.type)}</b> · ${esc(n.label)}<br>${n.value-1} connection(s)`;
+      return el; })(),
+  })));
+  const edges = new vis.DataSet(d.edges.map(e => ({ from: e.from, to: e.to, label: e.label, title: e.label })));
+  if (net) net.destroy();
+  net = new vis.Network(box, {nodes, edges}, {
+    nodes: {
+      shape: 'dot',
+      scaling: { min: 9, max: 36, label: { enabled: true, min: 10, max: 19 } },
+      font: { color: '#e7ecff', face: 'Inter', size: 13, strokeWidth: 5, strokeColor: 'rgba(7,11,20,.9)' },
+      borderWidth: 1.5,
+      shadow: { enabled: true, color: 'rgba(99,102,241,.6)', size: 16, x: 0, y: 0 },
+    },
+    edges: {
+      smooth: { enabled: true, type: 'dynamic', roundness: 0.45 },
+      width: 1.3, hoverWidth: 2.8, selectionWidth: 2.8,
+      color: { color: 'rgba(148,163,255,.30)', hover: '#7dd3fc', highlight: '#7dd3fc' },
+      font: { color: '#8ea0c9', size: 10, face: 'Inter', strokeWidth: 4, strokeColor: 'rgba(7,11,20,.92)' },
+      arrows: { to: { enabled: true, scaleFactor: 0.5 } },
+    },
+    physics: {
+      enabled: physicsOn,
+      solver: 'forceAtlas2Based',
+      forceAtlas2Based: { gravitationalConstant: -55, springLength: 150, springConstant: 0.06, avoidOverlap: 0.6 },
+      stabilization: { iterations: 260, updateInterval: 25 },
+      minVelocity: 0.4,
+    },
+    interaction: { hover: true, tooltipDelay: 100, multiselect: false },
+  });
+  net.once('stabilizationIterationsDone', () =>
+    net.fit({ animation: { duration: 700, easingFunction: 'easeInOutQuad' } }));
+  net.on('doubleClick', p => { if (p.nodes.length) net.focus(p.nodes[0], {scale: 1.4, animation: true}); });
+}
+
+async function testConns(btn) {
+  const panel = $('testpanel');
+  panel.style.display = 'block';
+  $('testbody').innerHTML = '<p class="loading">◌ testing…</p>';
+  btn.disabled = true;
+  try {
+    const d = await (await fetch('/api/test')).json();
+    if (d._note) { $('testbody').innerHTML = '<p class="muted">' + esc(d._note) + '</p>'; return; }
+    $('testbody').innerHTML = Object.entries(d).map(([k, v]) =>
+      `<div style="display:flex;gap:9px;align-items:baseline;padding:7px 0;border-bottom:1px solid rgba(148,163,255,.08)">
+         <span style="width:9px;height:9px;border-radius:50%;flex:none;margin-top:4px;box-shadow:0 0 8px currentColor;
+           background:${v.ok ? 'var(--ok)' : 'var(--bad)'};color:${v.ok ? 'var(--ok)' : 'var(--bad)'}"></span>
+         <div><b>${esc(k)}</b> <span class="muted">HTTP ${v.http ?? '—'}</span>
+         <div class="muted">${esc(v.detail)}</div></div></div>`).join('');
+  } finally { btn.disabled = false; }
+}
+
+(async () => {
+  const s = await (await fetch('/api/status')).json();
+  for (const k in s.keys) { const el = $('k-' + k); if (el && s.keys[k]) el.classList.add('on'); }
+  loadHistory();
+})();
+</script>
+</body>
+</html>
